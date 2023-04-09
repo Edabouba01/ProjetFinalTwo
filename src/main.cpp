@@ -165,9 +165,98 @@ setInterval(meteo, 3000);
 )rawliteral";
 
 void setup() {
-  // put your setup code here, to run once:
+  
+  // Serial port for debugging purposes
+  Serial.begin(9600);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  // Wait for connection
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.println("Connecting to WiFi..");
+  }
+
+  // Print ESP Local IP Address
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/html", index_html); });
+
+  // Route for root / Requet JS
+  server.on("/js/contenu.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "application/javascript", js_contenu); });
+
+  // Créez une route pour envoyer les données du capteur au format JSON
+  server.on("/Renvoi", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+    String json = "{";
+    json += "\"VlTemperature\": " + String(bme.readTemperature()) + ",";
+    json += "\"VlHumidite\": " + String(bme.readHumidity()) + ",";
+    json += "\"VlPression\": " + String(bme.readPressure() / 100.0F) + ",";
+    json += "\"VlAltitude\": " + String(bme.readAltitude(1013.25));
+    json += "}";
+    
+    request->send(200, "application/json", json); });
+
+  // Start ElegantOTA
+  AsyncElegantOTA.begin(&server);
+  // Start server
+  server.begin();
+  Serial.println("HTTP server started");
+  
+  //Test BME
+  Serial.println(F("BME280 test"));
+  if (!bme.begin())
+  {
+    Serial.println("Could not find a valid BME280 sensor, check wiring!");
+  }
+
+  bool status; // Pour prendre l etat des status
+
+  // Voir si le Bme280 est prise en charge
+  status = bme.begin(0x76);
+  if (!status)
+  {
+    Serial.println("BME non disponible ");
+  }
+
+  // lecture des valeurs de temperature, pression, altitude et humidite depuis le bme
+  float Temperature = bme.readTemperature();
+  float Humidite = bme.readHumidity();
+  float Pression = bme.readPressure() / 100.0F;
+  float Altitude = bme.readAltitude(1013.25);
+  
+  //Affichage dans le  Serial
+
+  Serial.print(F("Temperature = "));
+  Serial.print(Temperature);
+  Serial.println(" *C");
+  Serial.println("La valeur de lhumidite");
+  Serial.println(Humidite);
+  Serial.println(" *F");
+  Serial.print(F("Pression = "));
+  Serial.println(Pression);
+  Serial.println(" Pa");
+  Serial.print(F("Approx altitude = "));
+  Serial.print(Altitude);
+  Serial.println(" m");
+  Serial.println();
+  delay(3000);
+
+  // Lancer le Web
+  server.begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  
 }
